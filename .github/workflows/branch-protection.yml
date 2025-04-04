@@ -55,11 +55,23 @@ jobs:
       
       - name: Check commit signatures
         run: |
-          git log --show-signature | grep -q "gpg: Good signature"
-          if [ $? -ne 0 ]; then
-            echo "Error: All commits must be signed"
+          # Get the latest commit
+          COMMIT_HASH=$(git rev-parse HEAD)
+          
+          # Check if the commit is signed
+          if ! git verify-commit $COMMIT_HASH 2>/dev/null; then
+            echo "::error::Commit $COMMIT_HASH is not signed with GPG"
+            echo "::warning::Please sign your commits using GPG. Follow these steps:"
+            echo "1. Generate a GPG key: gpg --full-generate-key"
+            echo "2. List your GPG keys: gpg --list-secret-keys --keyid-format LONG"
+            echo "3. Export your GPG key: gpg --armor --export YOUR_KEY_ID"
+            echo "4. Add the key to your GitHub account: Settings -> SSH and GPG keys -> New GPG key"
+            echo "5. Configure Git to use your GPG key: git config --global user.signingkey YOUR_KEY_ID"
+            echo "6. Enable commit signing: git config --global commit.gpgsign true"
             exit 1
           fi
+          
+          echo "✓ Commit $COMMIT_HASH is properly signed"
 
   prevent-force-push:
     runs-on: ubuntu-latest
@@ -68,6 +80,7 @@ jobs:
       - name: Check for force push
         run: |
           if [[ "${{ github.event.forced }}" == "true" ]]; then
-            echo "Error: Force pushing to protected branch is not allowed"
+            echo "::error::Force pushing to protected branch is not allowed"
+            echo "::warning::Please create a new branch and submit a pull request instead"
             exit 1
           fi 
