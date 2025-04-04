@@ -59,47 +59,8 @@ By participating in this project, you agree to abide by our Code of Conduct. Ple
 2. Update the documentation if you're changing functionality
 3. The PR will be merged once you have the sign-off of at least one maintainer
 4. Make sure all tests pass before submitting a PR
-5. All commits must be signed with GPG
-6. Force pushing to protected branches is not allowed
-7. Pull requests require at least one approval before merging
-
-### GPG Signing Requirements
-All commits must be signed with GPG. To set up GPG signing:
-
-1. Generate a GPG key:
-   ```bash
-   gpg --full-generate-key
-   ```
-   - Choose RSA and RSA (default)
-   - Choose 4096 bits
-   - Choose 0 = key does not expire
-   - Enter your name and email (use the same email as your GitHub account)
-
-2. List your GPG keys:
-   ```bash
-   gpg --list-secret-keys --keyid-format LONG
-   ```
-
-3. Export your GPG key:
-   ```bash
-   gpg --armor --export YOUR_KEY_ID
-   ```
-
-4. Add the key to your GitHub account:
-   - Go to Settings -> SSH and GPG keys
-   - Click "New GPG key"
-   - Paste your exported key
-
-5. Configure Git to use your GPG key:
-   ```bash
-   git config --global user.signingkey YOUR_KEY_ID
-   git config --global commit.gpgsign true
-   ```
-
-6. For Windows users, you may need to set the GPG program:
-   ```bash
-   git config --global gpg.program "C:\Program Files\GnuPG\bin\gpg.exe"
-   ```
+5. Force pushing to protected branches is not allowed
+6. Pull requests require at least one approval before merging
 
 ### Branch Protection Rules
 - The `main` and `master` branches are protected
@@ -109,7 +70,6 @@ All commits must be signed with GPG. To set up GPG signing:
   - At least one approval from a maintainer
   - All status checks to pass
   - No merge conflicts
-  - Signed commits
 - Force pushing to protected branches is prohibited
 
 ## Code Style

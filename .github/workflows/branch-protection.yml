@@ -46,33 +46,6 @@ jobs:
               }
             }
 
-  enforce-signed-commits:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      
-      - name: Check commit signatures
-        run: |
-          # Get the latest commit
-          COMMIT_HASH=$(git rev-parse HEAD)
-          
-          # Check if the commit is signed
-          if ! git verify-commit $COMMIT_HASH 2>/dev/null; then
-            echo "::error::Commit $COMMIT_HASH is not signed with GPG"
-            echo "::warning::Please sign your commits using GPG. Follow these steps:"
-            echo "1. Generate a GPG key: gpg --full-generate-key"
-            echo "2. List your GPG keys: gpg --list-secret-keys --keyid-format LONG"
-            echo "3. Export your GPG key: gpg --armor --export YOUR_KEY_ID"
-            echo "4. Add the key to your GitHub account: Settings -> SSH and GPG keys -> New GPG key"
-            echo "5. Configure Git to use your GPG key: git config --global user.signingkey YOUR_KEY_ID"
-            echo "6. Enable commit signing: git config --global commit.gpgsign true"
-            exit 1
-          fi
-          
-          echo "✓ Commit $COMMIT_HASH is properly signed"
-
   prevent-force-push:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
