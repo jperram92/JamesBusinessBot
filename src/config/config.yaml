@@ -1,0 +1,54 @@
+# Bot Configuration
+bot:
+  name: "Business Assistant Bot"
+  email_domain: "your-domain.com"  # Replace with your domain
+  language: "en-US"
+
+# Meeting Settings
+meetings:
+  teams:
+    enabled: true
+    auto_join: true
+    record_audio: true
+  google_meet:
+    enabled: true
+    auto_join: true
+    record_audio: true
+
+# OpenAI Settings
+openai:
+  model: "gpt-4"
+  temperature: 0.7
+  max_tokens: 2000
+  summary_prompt: |
+    Please provide a comprehensive summary of the meeting, including:
+    - Key decisions made
+    - Action items
+    - Next steps
+    - Important discussion points
+
+# JIRA Settings
+jira:
+  default_project: "PROJ"
+  ticket_template: |
+    Summary: {summary}
+    Description: {description}
+    Type: Task
+    Priority: Medium
+    Labels: meeting-notes
+
+# Document Generation
+documents:
+  word:
+    template_path: "templates/meeting_summary.docx"
+    output_dir: "output/word"
+  powerpoint:
+    template_path: "templates/meeting_presentation.pptx"
+    output_dir: "output/powerpoint"
+
+# Logging
+logging:
+  level: "INFO"
+  file: "logs/bot.log"
+  max_size: 10485760  # 10MB
+  backup_count: 5 
