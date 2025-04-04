@@ -43,7 +43,7 @@ The Business Meeting Assistant Bot is a comprehensive solution for automating me
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-org/meeting-assistant-bot.git
+   git clone https://github.com/jperram92/JamesBusinessBot.git
    cd meeting-assistant-bot
    ```
 
