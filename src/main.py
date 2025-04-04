@@ -4,8 +4,8 @@ from typing import Dict, List, Optional
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-from bot.meeting_bot import MeetingBot
-from config.config_loader import load_config
+from src.bot.meeting_bot import MeetingBot
+from src.config.config_loader import load_config
 
 # Configure logging
 logging.basicConfig(

@@ -1,0 +1,3 @@
+"""
+JamesBusinessBot main package
+""" 
