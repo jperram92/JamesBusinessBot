@@ -59,6 +59,20 @@ By participating in this project, you agree to abide by our Code of Conduct. Ple
 2. Update the documentation if you're changing functionality
 3. The PR will be merged once you have the sign-off of at least one maintainer
 4. Make sure all tests pass before submitting a PR
+5. All commits must be signed with GPG
+6. Force pushing to protected branches is not allowed
+7. Pull requests require at least one approval before merging
+
+### Branch Protection Rules
+- The `main` and `master` branches are protected
+- Direct pushes to protected branches are not allowed
+- All changes must go through pull requests
+- Pull requests require:
+  - At least one approval from a maintainer
+  - All status checks to pass
+  - No merge conflicts
+  - Signed commits
+- Force pushing to protected branches is prohibited
 
 ## Code Style
 

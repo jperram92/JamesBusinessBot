@@ -1,0 +1,73 @@
+name: Branch Protection
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  push:
+    branches: [ main, master ]
+
+jobs:
+  protect-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch protection
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: branch } = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: context.ref.replace('refs/heads/', '')
+            });
+            
+            if (!branch.protected) {
+              console.log('Warning: Branch is not protected. Please enable branch protection rules in repository settings.');
+            }
+            
+            // Check if PR has required reviews
+            if (context.eventName === 'pull_request') {
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number
+              });
+              
+              if (!pr.merged && !pr.draft) {
+                const { data: reviews } = await github.rest.pulls.listReviews({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.issue.number
+                });
+                
+                const approvedReviews = reviews.filter(review => review.state === 'APPROVED');
+                if (approvedReviews.length === 0) {
+                  core.setFailed('Pull request requires at least one approval before merging.');
+                }
+              }
+            }
+
+  enforce-signed-commits:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Check commit signatures
+        run: |
+          git log --show-signature | grep -q "gpg: Good signature"
+          if [ $? -ne 0 ]; then
+            echo "Error: All commits must be signed"
+            exit 1
+          fi
+
+  prevent-force-push:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Check for force push
+        run: |
+          if [[ "${{ github.event.forced }}" == "true" ]]; then
+            echo "Error: Force pushing to protected branch is not allowed"
+            exit 1
+          fi 
