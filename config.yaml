@@ -1,0 +1,15 @@
+meetings:
+  google_meet:
+    enabled: true
+    credentials_path: "credentials/google_credentials.json"
+    google_account:
+      email: "jamesbusinessbot@gmail.com"  # Replace with your Google account email
+      password: "JamesBusinessBot123!!!"   # Replace with your Google account app password
+    scopes:
+      - "https://www.googleapis.com/auth/calendar"
+      - "https://www.googleapis.com/auth/calendar.events"
+      - "https://www.googleapis.com/auth/meetings.space.created"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s" 

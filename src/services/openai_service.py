@@ -3,43 +3,98 @@ import openai
 from typing import Optional, Dict, List
 import logging
 
+logger = logging.getLogger(__name__)
+
 class OpenAIService:
+    """OpenAI service for transcription and summarization."""
+    
     def __init__(self, config: Dict):
+        """Initialize the OpenAI service with configuration."""
         self.config = config
-        self.logger = logging.getLogger('OpenAIService')
+        openai.api_key = config['openai'].get('api_key')
+        self.model = config['openai'].get('model', 'gpt-4')
+        self.temperature = config['openai'].get('temperature', 0.7)
+        self.max_tokens = config['openai'].get('max_tokens', 2000)
+        self.summary_prompt = config['openai'].get('summary_prompt', '')
+        
+        logger.info("OpenAI service initialized")
         
         # Initialize OpenAI client
-        openai.api_key = os.getenv('OPENAI_API_KEY')
         if not openai.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is not set")
             
     async def transcribe_audio(self, audio_data: bytes) -> str:
-        """Transcribe audio data using OpenAI's Whisper model."""
+        """Transcribe audio data to text."""
         try:
-            response = await openai.Audio.atranscribe(
+            response = await openai.audio.transcriptions.create(
+                file=audio_data,
                 model="whisper-1",
-                file=audio_data
+                language="en"
             )
             return response.text
         except Exception as e:
-            self.logger.error(f"Error transcribing audio: {str(e)}")
+            logger.error(f"Failed to transcribe audio: {str(e)}")
             raise
             
-    async def generate_summary(self, text: str) -> str:
-        """Generate a summary of the meeting using OpenAI."""
+    async def generate_summary(self, text: str) -> Dict[str, List[str]]:
+        """Generate meeting summary and extract key information."""
         try:
-            response = await openai.ChatCompletion.acreate(
-                model=self.config['openai']['model'],
+            # Prepare the prompt
+            prompt = f"{self.summary_prompt}\n\nMeeting Transcript:\n{text}"
+            
+            # Generate summary using OpenAI
+            response = await openai.chat.completions.create(
+                model=self.model,
                 messages=[
-                    {"role": "system", "content": self.config['openai']['summary_prompt']},
-                    {"role": "user", "content": text}
+                    {"role": "system", "content": "You are a helpful assistant that summarizes meetings and extracts key information."},
+                    {"role": "user", "content": prompt}
                 ],
-                temperature=self.config['openai']['temperature'],
-                max_tokens=self.config['openai']['max_tokens']
+                temperature=self.temperature,
+                max_tokens=self.max_tokens
             )
-            return response.choices[0].message.content
+            
+            # Parse the response
+            summary_text = response.choices[0].message.content
+            
+            # Extract information (this is a simple implementation)
+            lines = summary_text.split('\n')
+            summary = []
+            action_items = []
+            key_points = []
+            next_steps = []
+            
+            current_section = None
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                
+                if line.lower().startswith('summary:'):
+                    current_section = 'summary'
+                elif line.lower().startswith('action items:'):
+                    current_section = 'action_items'
+                elif line.lower().startswith('key points:'):
+                    current_section = 'key_points'
+                elif line.lower().startswith('next steps:'):
+                    current_section = 'next_steps'
+                else:
+                    if current_section == 'summary':
+                        summary.append(line)
+                    elif current_section == 'action_items':
+                        action_items.append({'description': line})
+                    elif current_section == 'key_points':
+                        key_points.append(line)
+                    elif current_section == 'next_steps':
+                        next_steps.append(line)
+            
+            return {
+                'summary': '\n'.join(summary),
+                'action_items': action_items,
+                'key_points': key_points,
+                'next_steps': next_steps
+            }
         except Exception as e:
-            this.logger.error(f"Error generating summary: {str(e)}")
+            logger.error(f"Failed to generate summary: {str(e)}")
             raise
             
     async def extract_action_items(self, text: str) -> List[Dict]:
@@ -56,7 +111,7 @@ class OpenAIService:
             """
             
             response = await openai.ChatCompletion.acreate(
-                model=this.config['openai']['model'],
+                model=self.model,
                 messages=[
                     {"role": "system", "content": prompt},
                     {"role": "user", "content": text}
@@ -68,7 +123,7 @@ class OpenAIService:
             action_items = eval(response.choices[0].message.content)
             return action_items
         except Exception as e:
-            this.logger.error(f"Error extracting action items: {str(e)}")
+            logger.error(f"Error extracting action items: {str(e)}")
             raise
             
     async def generate_meeting_insights(self, text: str) -> Dict:
@@ -85,7 +140,7 @@ class OpenAIService:
             """
             
             response = await openai.ChatCompletion.acreate(
-                model=this.config['openai']['model'],
+                model=self.model,
                 messages=[
                     {"role": "system", "content": prompt},
                     {"role": "user", "content": text}
@@ -97,5 +152,5 @@ class OpenAIService:
             insights = eval(response.choices[0].message.content)
             return insights
         except Exception as e:
-            this.logger.error(f"Error generating meeting insights: {str(e)}")
+            logger.error(f"Error generating meeting insights: {str(e)}")
             raise 

@@ -1,3 +1,3 @@
 """
-JamesBusinessBot main package
+Business Meeting Assistant Bot package.
 """ 

@@ -15,8 +15,8 @@ class TeamsService:
     def __init__(self, config: Dict):
         """Initialize the Teams service with configuration."""
         self.config = config
-        self.app_id = config['teams']['app_id']
-        self.app_password = config['teams']['app_password']
+        self.app_id = config['meetings']['teams'].get('app_id')
+        self.app_password = config['meetings']['teams'].get('app_password')
         self.connector_client = None
         self.current_meeting = None
         self.audio_stream = None
@@ -26,16 +26,19 @@ class TeamsService:
     async def join_meeting(self, meeting_id: str) -> bool:
         """Join a Teams meeting."""
         try:
-            # Initialize Teams client
-            self.connector_client = ConnectorClient(
-                app_id=self.app_id,
-                app_password=self.app_password
-            )
+            # Initialize Teams client if not already initialized
+            if not self.connector_client:
+                self.connector_client = ConnectorClient(
+                    credentials={
+                        'app_id': self.app_id,
+                        'app_password': self.app_password
+                    }
+                )
             
             # Join the meeting
             join_url = f"https://teams.microsoft.com/l/meetup-join/{meeting_id}"
             self.current_meeting = await self.connector_client.conversations.create_conversation(
-                activity=Activity(
+                Activity(
                     type="event",
                     name="JoinMeeting",
                     value={"joinUrl": join_url}
@@ -130,4 +133,22 @@ class TeamsService:
     @property
     def meeting_id(self) -> Optional[str]:
         """Get the current meeting ID."""
-        return self.current_meeting.id if self.current_meeting else None 
+        return self.current_meeting.id if self.current_meeting else None
+    
+    async def send_message(self, message: str) -> bool:
+        """Send a message to the current meeting chat."""
+        try:
+            if self.current_meeting:
+                await self.connector_client.conversations.send_to_conversation(
+                    self.current_meeting.id,
+                    Activity(
+                        type="message",
+                        text=message
+                    )
+                )
+                logger.info("Successfully sent message to Teams meeting")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Failed to send message to Teams meeting: {str(e)}")
+            return False 

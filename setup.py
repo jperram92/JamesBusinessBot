@@ -20,8 +20,8 @@ setup(
     ],
     python_requires=">=3.9",
     install_requires=[
-        "python-teams-bot>=1.0.0",
-        "google-meet-api>=1.0.0",
+        "botframework-connector>=4.14.0",
+        "google-api-python-client>=2.0.0",
         "openai>=1.0.0",
         "python-docx>=0.8.11",
         "python-pptx>=0.6.21",
@@ -32,6 +32,8 @@ setup(
         "pydantic>=1.8.2",
         "python-multipart>=0.0.5",
         "azure-cognitiveservices-speech>=1.20.0",
+        "requests>=2.31.0",
+        "python-jose>=3.3.0"
     ],
     extras_require={
         "dev": [

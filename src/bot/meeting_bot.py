@@ -1,7 +1,5 @@
 import asyncio
 import logging
-import os
-from datetime import datetime
 from typing import Dict, List, Optional, Union
 
 from ..services.document_service import DocumentService
@@ -9,16 +7,15 @@ from ..services.google_meet_service import GoogleMeetService
 from ..services.jira_service import JiraService
 from ..services.openai_service import OpenAIService
 from ..services.teams_service import TeamsService
-from ..utils.config_loader import ConfigLoader
 
 logger = logging.getLogger(__name__)
 
 class MeetingBot:
     """Core bot functionality that orchestrates various services."""
     
-    def __init__(self, config_path: str = "src/config/config.yaml"):
+    def __init__(self, config: Dict):
         """Initialize the meeting bot with configuration."""
-        self.config = ConfigLoader.load_config(config_path)
+        self.config = config
         self.current_meeting = None
         self.transcription_buffer = []
         self.summary = None
@@ -35,7 +32,7 @@ class MeetingBot:
         
         logger.info("Meeting bot initialized with configuration")
     
-    async def join_meeting(self, meeting_id: str, platform: str = "teams") -> bool:
+    async def join_meeting(self, meeting_id: str, platform: str = "teams", title: Optional[str] = None, description: Optional[str] = None) -> bool:
         """Join a meeting on the specified platform."""
         try:
             if platform.lower() == "teams" and self.teams_service:
@@ -52,7 +49,7 @@ class MeetingBot:
             logger.error(f"Failed to join meeting: {str(e)}")
             return False
     
-    async def leave_meeting(self) -> bool:
+    async def leave_meeting(self, meeting_id: str) -> bool:
         """Leave the current meeting."""
         try:
             if self.current_meeting:
@@ -69,17 +66,16 @@ class MeetingBot:
             logger.error(f"Failed to leave meeting: {str(e)}")
             return False
     
-    async def process_audio(self, audio_data: bytes) -> None:
-        """Process audio data from the meeting."""
+    async def process_meeting(self, meeting_id: str) -> None:
+        """Process the meeting in the background."""
         try:
-            # Add audio data to transcription buffer
-            self.transcription_buffer.append(audio_data)
-            
-            # Process buffer when it reaches a certain size
-            if len(self.transcription_buffer) >= self.config['transcription']['buffer_size']:
-                await self._process_transcription_buffer()
+            while self.current_meeting:
+                # Process audio data if available
+                if self.transcription_buffer:
+                    await self._process_transcription_buffer()
+                await asyncio.sleep(1)  # Avoid busy waiting
         except Exception as e:
-            logger.error(f"Failed to process audio: {str(e)}")
+            logger.error(f"Error processing meeting: {str(e)}")
     
     async def _process_transcription_buffer(self) -> None:
         """Process the transcription buffer and generate summaries."""
@@ -103,27 +99,23 @@ class MeetingBot:
         except Exception as e:
             logger.error(f"Failed to process transcription buffer: {str(e)}")
     
-    async def generate_documents(self, meeting_id: str, format: str = "word") -> str:
+    async def generate_document(self, meeting_id: str, doc_type: str = "summary", format: str = "docx") -> str:
         """Generate documents from meeting content."""
         try:
             # Prepare document data
             doc_data = {
                 'meeting_id': meeting_id,
-                'meeting_date': datetime.now().strftime("%Y-%m-%d"),
-                'meeting_time': datetime.now().strftime("%H:%M"),
-                'platform': self.current_meeting.__class__.__name__,
                 'summary': self.summary,
                 'key_points': self.key_points,
                 'action_items': self.action_items,
-                'next_steps': self.next_steps,
-                'notes': "\n".join(self.transcription_buffer)
+                'next_steps': self.next_steps
             }
             
             # Generate document
-            if format.lower() == "word":
-                doc_path = await this.document_service.create_word_document(meeting_id, doc_data)
-            elif format.lower() == "powerpoint":
-                doc_path = await this.document_service.create_powerpoint_presentation(meeting_id, doc_data)
+            if format.lower() == "docx":
+                doc_path = await self.document_service.create_word_document(meeting_id, doc_data)
+            elif format.lower() == "pptx":
+                doc_path = await self.document_service.create_powerpoint_presentation(meeting_id, doc_data)
             else:
                 raise ValueError(f"Unsupported document format: {format}")
             
@@ -133,34 +125,40 @@ class MeetingBot:
             logger.error(f"Failed to generate document: {str(e)}")
             raise
     
-    async def update_jira(self, meeting_id: str, jira_ticket_id: str) -> bool:
-        """Update JIRA ticket with meeting information."""
+    async def create_action_items(self, meeting_id: str, action_items: List[Dict]) -> List[str]:
+        """Create JIRA tickets for action items."""
         try:
-            # Prepare JIRA update data
-            update_data = {
-                'summary': self.summary,
-                'action_items': self.action_items,
-                'key_points': self.key_points,
-                'next_steps': self.next_steps
-            }
-            
-            # Update JIRA ticket
-            success = await self.jira_service.update_ticket(jira_ticket_id, update_data)
-            
-            if success:
-                logger.info(f"Successfully updated JIRA ticket: {jira_ticket_id}")
-            else:
-                logger.error(f"Failed to update JIRA ticket: {jira_ticket_id}")
-            
+            ticket_ids = []
+            for item in action_items:
+                ticket_id = await self.jira_service.create_ticket(
+                    summary=item['description'],
+                    description=f"Action item from meeting {meeting_id}",
+                    assignee=item.get('assignee'),
+                    due_date=item.get('due_date')
+                )
+                ticket_ids.append(ticket_id)
+            return ticket_ids
+        except Exception as e:
+            logger.error(f"Failed to create action items: {str(e)}")
+            raise
+    
+    async def update_meeting_ticket(self, meeting_id: str, summary: Optional[str] = None, description: Optional[str] = None) -> bool:
+        """Update the JIRA ticket for the meeting."""
+        try:
+            success = await self.jira_service.update_ticket(
+                ticket_id=meeting_id,
+                summary=summary,
+                description=description
+            )
             return success
         except Exception as e:
-            logger.error(f"Failed to update JIRA: {str(e)}")
-            return False
+            logger.error(f"Failed to update meeting ticket: {str(e)}")
+            raise
     
-    def get_meeting_status(self) -> Dict[str, Union[str, List[str]]]:
+    async def get_meeting_status(self, meeting_id: str) -> Dict[str, Union[str, List[str]]]:
         """Get the current status of the meeting."""
         return {
-            'meeting_id': self.current_meeting.meeting_id if self.current_meeting else None,
+            'meeting_id': meeting_id,
             'platform': self.current_meeting.__class__.__name__ if self.current_meeting else None,
             'summary': self.summary,
             'action_items': [item['description'] for item in self.action_items],
